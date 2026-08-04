@@ -29,12 +29,12 @@ MAIN_COMPANY = "Bijoy Bhandar 25-26"
 MEMBER_COMPANY_AP = "Bijoy Bhandar (A.P.)"
 USERNAME = "admin"
 PASSWORD = "bhandar2020"
-ODBC_PORT = "9000"
 
-# 🔴 FIX: Increased wait time to 300 seconds (5 minutes) per company sync
+# 🔴 FIX: Start on 9000, but allow it to change dynamically
+STARTING_PORT = "9000"
+
 SYNC_WAIT_TIME_PER_COMPANY = 300  
 
-# 🔴 FIX: Added slots for all 6 companies. Update the bottom 3 with your details!
 SYNC_TARGETS = [
     {
         "schema": "tallydb",
@@ -49,7 +49,7 @@ SYNC_TARGETS = [
         "company": "Bijoy Bhandar (S/r) - (from 1-Apr-25)"
     },
     {
-        "schema": "tallydb5",         
+        "schema": "tallydb5",        
         "company": "Bijoy Bhandar(Gro) - (from 1-Apr-25)"   
     },
     {
@@ -68,7 +68,6 @@ SYNC_TARGETS = [
 # SECTION 1: TALLY DESKTOP AUTOMATION (PYAUTOGUI)
 # ------------------------------------------------------------------------------
 def ensure_capslock_off():
-    """Checks if Caps Lock is ON using Windows API and turns it off if necessary."""
     VK_CAPITAL = 0x14
     if ctypes.windll.user32.GetKeyState(VK_CAPITAL) & 1:
         print("[WARNING] Caps Lock is ON. Automatically disabling it...")
@@ -76,13 +75,11 @@ def ensure_capslock_off():
         time.sleep(0.5)
 
 def focus_tally_window():
-    """Clicks the top-center area of the screen to focus the Tally Prime window."""
     width, height = pyautogui.size()
     pyautogui.click(width / 2, height / 3)
     time.sleep(0.5)
 
 def force_kill_tally():
-    """Forcefully terminates any stuck tally.exe background processes."""
     print("[CLEANUP] Cleaning up any stuck Tally background processes...")
     try:
         subprocess.run(["taskkill", "/F", "/IM", "tally.exe"], 
@@ -92,20 +89,18 @@ def force_kill_tally():
     except Exception:
         pass
 
-def prepare_tally_environment():
-    """Handles Tally Prime launch, initial login, port setup, restart, and loading companies."""
-    
+# 🔴 FIX: Modified to accept "target_port" so PyAutoGUI types the correct port
+def prepare_tally_environment(target_port):
     ensure_capslock_off()
     force_kill_tally()
     
-    print("[START] Launching Tally Prime...")
+    print(f"[START] Launching Tally Prime (Configuring for Port {target_port})...")
     subprocess.Popen(TALLY_EXE_PATH)
     print("[WAIT] Waiting 15 seconds for Tally Prime startup screen...")
     time.sleep(15)
 
     focus_tally_window()
 
-    # Step 1: Initial Login
     print(f"[SEARCH] Selecting Primary Company: '{MAIN_COMPANY}'...")
     pyautogui.write(MAIN_COMPANY, interval=0.05)
     pyautogui.press('enter')
@@ -119,9 +114,7 @@ def prepare_tally_environment():
     pyautogui.press('enter')
     time.sleep(4)
 
-    # Step 2: Configure Connectivity (Both / Yes / 9001)
     print("[SETTINGS] Navigating to F1: Help -> Settings -> Connectivity...")
-
     pyautogui.press('f1') 
     time.sleep(1.5)
     pyautogui.press('s')  
@@ -131,7 +124,7 @@ def prepare_tally_environment():
     pyautogui.press('enter')  
     time.sleep(1.5)
 
-    print(f"[CONFIG] Setting Client/Server: Both | ODBC: Yes | Port: {ODBC_PORT}...")
+    print(f"[CONFIG] Setting Client/Server: Both | ODBC: Yes | Port: {target_port}...")
     pyautogui.write("Both", interval=0.1)
     time.sleep(0.5)
     pyautogui.press('enter')
@@ -143,7 +136,9 @@ def prepare_tally_environment():
     time.sleep(1)
     
     pyautogui.press('backspace', presses=5)
-    pyautogui.write(ODBC_PORT, interval=0.1)
+    
+    # 🔴 FIX: Writes the dynamic port into Tally's settings
+    pyautogui.write(target_port, interval=0.1)
     time.sleep(0.5)
     pyautogui.press('enter') 
     time.sleep(1.5)
@@ -159,7 +154,6 @@ def prepare_tally_environment():
     print("[WAIT] Waiting 20 seconds for Tally reboot...") 
     time.sleep(20)
 
-    # Step 3: Re-login Post-Restart
     print(f"[LOGIN] Re-logging into '{MAIN_COMPANY}' post-restart...")
     focus_tally_window()
     pyautogui.write(MAIN_COMPANY, interval=0.05)
@@ -171,18 +165,10 @@ def prepare_tally_environment():
     pyautogui.write(PASSWORD, interval=0.05)
     pyautogui.press('enter')
     time.sleep(4)
-
-    # ======================================================================
-    # EXACT F3 MENU NAVIGATION SEQUENCE 
-    # ======================================================================
     
-    # Step 4: Open F3 -> Select Company -> Load Bijoy Bhandar (A.P.)
     print(f"[FOLDER] Pressing F3 -> Selecting 'Select Company' -> Loading '{MEMBER_COMPANY_AP}'...")
-    
     pyautogui.press('f3') 
     time.sleep(1.5)
-    
-    # Press UP 10 times to hit 'Create Company', then DOWN 2 times to hit 'Select Company'
     pyautogui.press('up', presses=10, interval=0.05)
     time.sleep(0.5)
     pyautogui.press('down', presses=2, interval=0.2)
@@ -192,17 +178,12 @@ def prepare_tally_environment():
     
     pyautogui.write(MEMBER_COMPANY_AP, interval=0.05)
     pyautogui.press('enter')
-    
     print("[WAIT] Loading company, please wait 8 seconds...")
     time.sleep(8)
 
-    # Step 5: Navigate Directory Tree for P & R Construction
-    print("[FOLDER] Pressing F3 -> 'Select Company' -> Navigating Up -> Up -> P&R -> 10005...")
-    
+    print("[FOLDER] Navigating Directory Tree for P & R Construction...")
     pyautogui.press('f3')
     time.sleep(1.5)
-    
-    # Select Company again (Slam to Top -> Down 2)
     pyautogui.press('up', presses=10, interval=0.05)
     time.sleep(0.5)
     pyautogui.press('down', presses=2, interval=0.2)
@@ -210,7 +191,6 @@ def prepare_tally_environment():
     pyautogui.press('enter')
     time.sleep(2)
 
-    # Slam to Top (Create Company), then DOWN exactly 5 times to hit the '♦ Up' folder option
     pyautogui.press('up', presses=15, interval=0.05)  
     time.sleep(0.5)
     pyautogui.press('down', presses=5, interval=0.2)
@@ -218,7 +198,6 @@ def prepare_tally_environment():
     pyautogui.press('enter')
     time.sleep(1.5)
 
-    # Second time: Slam to Top, then DOWN exactly 5 times to hit the '♦ Up' folder option
     pyautogui.press('up', presses=15, interval=0.05)  
     time.sleep(0.5)
     pyautogui.press('down', presses=5, interval=0.2)
@@ -226,26 +205,22 @@ def prepare_tally_environment():
     pyautogui.press('enter')
     time.sleep(1.5)
 
-    # Search for P&R
     pyautogui.write("P&R", interval=0.05)
     time.sleep(0.5)
     pyautogui.press('enter')
     time.sleep(1.5)
 
-    # Search for 10005
     pyautogui.write("10005", interval=0.05)
     time.sleep(0.5)
     pyautogui.press('enter')
     time.sleep(1.5)
 
-    # Select final company
     pyautogui.write("P & R Construction", interval=0.05)
     time.sleep(0.5)
     pyautogui.press('enter')
     
     print("[WAIT] Loading final company...")
     time.sleep(8) 
-
     print("[SUCCESS] Tally Prime setup complete! All required companies are loaded.")
 
 
@@ -261,7 +236,7 @@ def start_backend():
         creationflags=subprocess.CREATE_NEW_CONSOLE
     )
 
-def run_sync_pipeline():
+def run_sync_pipeline(initial_port):
     options = webdriver.ChromeOptions()
     options.add_argument("--allow-file-access-from-files")
     options.add_argument("--disable-web-security")
@@ -274,6 +249,8 @@ def run_sync_pipeline():
     driver = webdriver.Chrome(options=options)
     wait = WebDriverWait(driver, 20)
     
+    current_tally_port = initial_port
+    
     try:
         print(f"[WEB] Opening GUI Interface: {GUI_URL}")
         driver.get(GUI_URL)
@@ -285,64 +262,92 @@ def run_sync_pipeline():
         time.sleep(1)
         
         total_targets = len(SYNC_TARGETS)
-        print(f"[INFO] Found {total_targets} target company/schema pairs to sync.")
         
         for idx, target in enumerate(SYNC_TARGETS, 1):
             schema_name = target["schema"]
             target_company = target["company"]
             
             print(f"\n--------------------------------------------------")
-            print(f"[SYNC] [{idx}/{total_targets}] Processing Schema: '{schema_name}' | Company: '{target_company}'")
+            print(f"[SYNC] [{idx}/{total_targets}] Schema: '{schema_name}' | Company: '{target_company}'")
             print(f"--------------------------------------------------")
             
             port_input = driver.find_element(By.ID, "tally_port")
             reload_btn = driver.find_element(By.XPATH, "//input[@value='Reload Company List']")
-            active_port = None
             
-            for test_port in ["9001", "9000"]:
-                print(f"  [SEARCH] Testing Port {test_port} for active Tally connection...")
-                port_input.clear()
-                port_input.send_keys(test_port)
-                time.sleep(0.5)
-                
-                driver.execute_script("arguments[0].click();", reload_btn)
-                time.sleep(4) 
-                
-                datalist_options = driver.find_elements(By.XPATH, "//datalist[@id='dl_tally_company']/option")
-                available_companies = [opt.get_attribute("value").strip() for opt in datalist_options if opt.get_attribute("value")]
-                
-                company_count = len(available_companies)
-                print(f"  -> Port {test_port} returned {company_count} companies.")
-                
-                if company_count >= 5 and any(target_company in comp for comp in available_companies):
-                    print(f"  [SUCCESS] FULL CONNECTION VERIFIED on Port {test_port}! ({company_count} companies active)")
-                    active_port = test_port
-                    break
-                else:
-                    print(f"  [WARNING] Port {test_port} returned incomplete list or no connection. Testing next...")
+            alternate_port = "9001" if current_tally_port == "9000" else "9000"
+            ports_to_try = [current_tally_port, alternate_port]
+            sync_successful = False
             
-            if not active_port:
-                print(f"[ERROR] Could not establish full connection for '{target_company}'. Skipping...")
-                continue
-            
-            print(f"[INPUT] Setting Database Schema: {schema_name}")
-            schema_input = driver.find_element(By.ID, "database_schema")
-            schema_input.clear()
-            schema_input.send_keys(schema_name)
-            time.sleep(1)
-            
-            company_input = driver.find_element(By.ID, "tally_company")
-            company_input.clear()
-            company_input.send_keys(target_company)
-            time.sleep(1)
-            
-            print("[ACTION] Clicking Sync button...")
-            sync_btn = driver.find_element(By.ID, "btnSync")
-            driver.execute_script("arguments[0].click();", sync_btn)
-            
-            print(f"[WAIT] Waiting {SYNC_WAIT_TIME_PER_COMPANY}s for BigQuery upload to finish...")
-            time.sleep(SYNC_WAIT_TIME_PER_COMPANY)
-            print(f"[SUCCESS] Completed sync sequence for {target_company}")
+            for test_port in ports_to_try:
+                try:
+                    if test_port != current_tally_port:
+                        print(f"  [RECOVERY ERROR] Sync failed on {current_tally_port}. Reconfiguring Tally Prime inside PyAutoGUI to Port {test_port}...")
+                        
+                        driver.minimize_window()
+                        prepare_tally_environment(test_port)
+                        current_tally_port = test_port
+                        driver.maximize_window()
+                        time.sleep(2)
+                    
+                    print(f"  [ATTEMPT] Testing GUI connection to Tally on Port {test_port}...")
+                    port_input.clear()
+                    port_input.send_keys(test_port)
+                    time.sleep(0.5)
+                    
+                    driver.execute_script("arguments[0].click();", reload_btn)
+                    time.sleep(4) 
+                    
+                    # 🔴 FIX: Check for the exact GUI error text after reloading the company list!
+                    if "Unable to connect with Tally" in driver.page_source:
+                        raise ValueError(f"GUI Explicit Error: 'Unable to connect with Tally' caught on port {test_port}.")
+                    
+                    datalist_options = driver.find_elements(By.XPATH, "//datalist[@id='dl_tally_company']/option")
+                    available_companies = [opt.get_attribute("value").strip() for opt in datalist_options if opt.get_attribute("value")]
+                    
+                    if not any(target_company in comp for comp in available_companies):
+                        raise ValueError(f"Company '{target_company}' missing from GUI menu.")
+                        
+                    print(f"  [SUCCESS] Tally connected and company found! Proceeding with sync...")
+                    
+                    schema_input = driver.find_element(By.ID, "database_schema")
+                    schema_input.clear()
+                    schema_input.send_keys(schema_name)
+                    time.sleep(1)
+                    
+                    company_input = driver.find_element(By.ID, "tally_company")
+                    company_input.clear()
+                    company_input.send_keys(target_company)
+                    time.sleep(1)
+                    
+                    print("  [ACTION] Clicking Sync button...")
+                    sync_btn = driver.find_element(By.ID, "btnSync")
+                    driver.execute_script("arguments[0].click();", sync_btn)
+                    
+                    # 🔴 FIX: Aggressively monitor the output console for 10 seconds before waiting
+                    print("  [MONITOR] Checking GUI output console for connection errors...")
+                    error_detected = False
+                    for _ in range(5):  # Check 5 times (every 2 seconds)
+                        time.sleep(2)
+                        if "Unable to connect with Tally" in driver.page_source:
+                            error_detected = True
+                            break
+                            
+                    if error_detected:
+                        raise ConnectionError(f"Sync crashed right after clicking: 'Unable to connect with Tally' on port {test_port}")
+                    
+                    print(f"  [WAIT] No immediate port errors. Waiting {SYNC_WAIT_TIME_PER_COMPANY}s for BigQuery upload to finish...")
+                    time.sleep(SYNC_WAIT_TIME_PER_COMPANY)
+                    
+                    print(f"  [SUCCESS] Completed sync sequence for {target_company}")
+                    sync_successful = True
+                    break 
+                    
+                except Exception as e:
+                    print(f"  [WARNING] Sync failed -> {e}")
+                    continue 
+
+            if not sync_successful:
+                print(f"[CRITICAL ERROR] Could not sync '{target_company}' on ANY port. Skipping to next company...")
             
         print("\n==================================================")
         print("[FINISHED] ALL AVAILABLE TARGET COMPANIES PROCESSED")
@@ -360,13 +365,14 @@ def run_sync_pipeline():
 if __name__ == "__main__":
     backend_proc = None
     try:
-        prepare_tally_environment()
+        # Start the sequence on Port 9000
+        prepare_tally_environment(STARTING_PORT)
         
         backend_proc = start_backend()
         print("[WAIT] Waiting for backend server initialization...")
         time.sleep(5)
         
-        run_sync_pipeline()
+        run_sync_pipeline(STARTING_PORT)
         
     finally:
         if backend_proc:
