@@ -156,18 +156,14 @@ def prepare_tally_environment(target_port):
     
     pyautogui.write(str(target_port), interval=0.3)
     time.sleep(1)
-    pyautogui.press('enter') 
-    time.sleep(1.5)
-
-    pyautogui.press('enter') 
-    time.sleep(1.5)
-
+    
     pyautogui.hotkey('ctrl', 'a')
     time.sleep(2)
     
     print("[RESTART] Accepting Tally restart prompt...")
-    pyautogui.press('y') 
-    print("[WAIT] Waiting 20 seconds for Tally reboot...") 
+    pyautogui.press('y')
+    
+    print("[WAIT] Waiting 20 seconds for Tally to reboot...")
     time.sleep(20)
 
     print(f"[LOGIN] Re-logging into '{MAIN_COMPANY}' post-restart...")
@@ -175,9 +171,11 @@ def prepare_tally_environment(target_port):
     pyautogui.write(MAIN_COMPANY, interval=0.05)
     pyautogui.press('enter')
     time.sleep(2)
+    
     pyautogui.write(USERNAME, interval=0.05)
     pyautogui.press('enter')
     time.sleep(1)
+    
     pyautogui.write(PASSWORD, interval=0.05)
     pyautogui.press('enter')
     time.sleep(40)
@@ -262,8 +260,11 @@ def run_sync_pipeline(initial_port):
     options.add_argument("--window-size=1920,1080")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-    
     options.add_experimental_option("excludeSwitches", ["enable-automation"])
+    # 🔴 FIX 1: Bring back the persistent profile so it stops acting like a Guest!
+    profile_path = os.path.join(PROJECT_BASE_DIR, "tally_chrome_profile")
+    options.add_argument(f"--user-data-dir={profile_path}")
+    options.add_argument("--profile-directory=Default")
     
     current_tally_port = initial_port
     total_targets = len(SYNC_TARGETS)
@@ -392,13 +393,14 @@ def run_sync_pipeline(initial_port):
         except Exception as err:
             print(f"[ERROR] Critical pipeline failure for {target_company}: {err}")
         finally:
-            # 🔴 FIX 3: Safely destroy the browser and clear memory before the next loop starts
+            # 🔴 FIX 2: Safely destroy the browser and UNLOCK the profile folder
             if driver:
                 try:
                     driver.quit()
+                    print("  [CLEANUP] Browser closed. Releasing profile folder lock...")
+                    time.sleep(3)  # Wait 3 seconds to guarantee Windows unlocks the folder!
                 except:
                     pass
-
     print("\n==================================================")
     print("[FINISHED] ALL AVAILABLE TARGET COMPANIES PROCESSED")
     print("==================================================")
