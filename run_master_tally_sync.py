@@ -29,8 +29,8 @@ GUI_URL = f"file:///{BACKEND_GUI_DIR}/gui.html".replace("\\", "/")
 # Tally Credentials & Company Identifiers
 MAIN_COMPANY = "Bijoy Bhandar 25-26"
 MEMBER_COMPANY_AP = "Bijoy Bhandar (A.P.)"
-USERNAME = ""
-PASSWORD = ""
+USERNAME = "admin"
+PASSWORD = "bhandar2020"
 
 # 🔴 FIX: Start on 9000, but allow it to change dynamically
 STARTING_PORT = "9000"
